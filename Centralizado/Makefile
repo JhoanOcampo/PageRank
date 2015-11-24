@@ -1,4 +1,4 @@
-CC = clang++ -std=c++11
+CC = clang++  -std=c++11
 
 PageRank: PageRank.o
 	$(CC) -o PageRank PageRank.o

@@ -16,6 +16,15 @@ using NodeSet = unordered_set<int>;
 using AdjMat = vector<vector<int>>;
 using Norm = unordered_map<int, int>;
 
+void printGraph(const Graph& g) {
+  for (const auto& adj : g) {
+    cout << adj.first << ": ";
+    for(auto t : adj.second)
+      cout << " " << t;
+    cout << endl;
+  }
+}
+
 pair<Graph, NodeSet> readGraph(const string &filename) {
   Graph result;
   NodeSet nodes;
@@ -40,6 +49,10 @@ pair<Graph, NodeSet> readGraph(const string &filename) {
 }
 
 pair<AdjMat, Norm> toMatrix(const Graph &g, const NodeSet &nodes) { 
+  //cout << "------------------" << endl;
+  //printGraph(g);
+  //cout << "------------------" << endl;
+
   Norm norm;
   int i = 0;
   for (int n : nodes) {
@@ -61,16 +74,16 @@ pair<AdjMat, Norm> toMatrix(const Graph &g, const NodeSet &nodes) {
 }
 
 void fixgraph(Graph &g, NodeSet nodes) {
-
   for (int n : nodes) {
     if (g.count(n) == 0) {
-      vector<int> adj;
-      for (int k : nodes)
-        if (k != n)
-          adj.push_back(k);
-      g[n] = adj;
+      //cout << "Node " << n << endl;
+      NodeSet adj(nodes);
+      adj.erase(n);
+      vector<int> adjN(adj.begin(), adj.end());
+      g[n] = adjN;
     }
   }
+  //printGraph(g);
 }
 
 vector<double> Pageiniciales(const NodeSet &nodes) {
@@ -88,26 +101,28 @@ vector<double> Pageiniciales(const NodeSet &nodes) {
   return PrI;
 }
 
-vector<int> Pagelinks(Graph &g, NodeSet &nodes, pair<AdjMat, Norm> &m) {
+vector<int> Pagelinks(const AdjMat &m) {
 
-  vector<int> Pl(nodes.size(), 0);//Declaracion vector de links que salen de un nodo
+  int tamaño =m.size();
+  vector<int> Pl(tamaño, 0);//Declaracion vector de links que salen de un nodo
   
+  
+  for (int i = 0; i < tamaño; i++) {
 
-  for (int i = 0; i < nodes.size(); i++) {
+    for (int j = 0; j < tamaño; j++) {
 
-    for (int j = 0; j < nodes.size(); j++) {
-
-      Pl[i] = Pl[i] + m.first[i][j];
+      Pl[i] = Pl[i] + m[i][j];
     }
+    /*
     if (Pl[i] == 0) {
-      for (int j = 0; j < nodes.size(); j++) {
-        if (i != j) {
-          m.first[i][j] = 1;
+      for (int l = 0; l < nodes.size(); l++) {
+        if (i != l) {
+          m.first[i][l] = 1;
         }
       }
       Pl[i] = nodes.size() - 1;
     }
-
+  */
     
   }
   
@@ -115,70 +130,94 @@ vector<int> Pagelinks(Graph &g, NodeSet &nodes, pair<AdjMat, Norm> &m) {
 }
 
 vector<double> PageRank(double &delta, vector<double> &PrI, vector<int> &Pl,
-                        Graph &g, NodeSet &nodes, pair<AdjMat, Norm> &m) {
+                        const AdjMat &m) {
 
   int iteraciones = 0;
   double parada;
   double d = 0.85;
-  vector<double> PrN(nodes.size(), 0);//Declaracion del vector que va a tener los nuevos PageRank
+  int numNodes = m.size();
+  vector<double> PrN(numNodes, 0);//Declaracion del vector que va a tener los nuevos PageRank
   do {
     iteraciones++;
     parada = 0;
-    for (int i = 0; i < nodes.size(); i++) {
+    for (int i = 0; i < numNodes; i++) {
       double aux = 0;
-      for (int j = 0; j < nodes.size(); j++) {
+      for (int j = 0; j < numNodes; j++) {
 
-        aux = aux + m.first[j][i] * (PrI[j] / Pl[j]);
+        aux = aux + m[j][i] * (PrI[j] / Pl[j]);
       }
-      PrN[i] = (1 - d) / nodes.size() + (d * aux);
+      PrN[i] = (1 - d) / numNodes + (d * aux);
     }
 
     
 
-    for (int j = 0; j < nodes.size(); j++) {
+    for (int j = 0; j < numNodes; j++) {
       parada = parada + abs(PrI[j] - PrN[j]);
       PrI[j] = PrN[j];
       
     }
     
-    
+    //cout << "Iteracion " << iteraciones << endl;
     
   } while (parada > delta);
   cout<<"Numero de iteraciones: "<<iteraciones<<endl;
   cout<<"Valor de la parada: "<< parada <<endl;
   return PrN;
 }
+
+
 int main() {
-  pair<Graph, NodeSet> g = readGraph("Wiki-Vote.txt");
+  pair<Graph, NodeSet> g = readGraph("WikiTalk.txt");
   Graph graph = g.first;
   NodeSet nodes = g.second;
   cout << graph.size() << endl;
   cout << nodes.size() << endl;
+  //pair<AdjMat, Norm> m = toMatrix(g.first, g.second);
+  /*
+   for(int i = 0; i < nodes.size(); i++) {
+   for(int j = 0; j < nodes.size(); j++) {
+    
+      cout<<m.first[i][j]<<" ";
+      }
+      cout<<endl;
+  }*/
   fixgraph(graph, nodes);
+  //printGraph(graph);
   cout << graph.size() << endl;
   cout << nodes.size() << endl;
 
-  pair<AdjMat, Norm> m = toMatrix(g.first, g.second);
+  pair<AdjMat, Norm> n = toMatrix(graph, g.second);
 
+  /*for(int i = 0; i < nodes.size(); i++) {
+   for(int j = 0; j < nodes.size(); j++) {
+    
+      cout<<n.first[i][j]<<" ";
+      }
+      cout<<endl;
+  }*/
   
-  vector<double> PrI;
-  PrI = Pageiniciales(g.second);
+  vector<double> PrI = Pageiniciales(g.second);
+  vector<int> Pl = Pagelinks(n.first);
 
-  vector<int> Pl;
-  Pl = Pagelinks(g.first, g.second, m);
-
+  /*for(int i = 0; i < nodes.size(); i++) {
+   for(int j = 0; j < nodes.size(); j++) {
+    
+      cout<<n.first[i][j]<<" ";
+      }
+      cout<<endl;
+  }*/
   
   double delta = 0.0000001;
-  vector<double> PrN = PageRank(delta, PrI, Pl, g.first, g.second, m);
+  vector<double> PrN = PageRank(delta, PrI, Pl, n.first);
 
   double suma = 0;
-  for (int i = 0; i < nodes.size(); i++) {
+  for (int k = 0; k < nodes.size(); k++) {
 
-    cout << PrI[i] << endl;
-    suma = suma + PrI[i];
+    //cout << PrI[k] << endl;
+    suma = suma + PrI[k];
   }
 
   cout << "Comprobar PageRank " << suma << endl;
-
+ 
   return 0;
 }
